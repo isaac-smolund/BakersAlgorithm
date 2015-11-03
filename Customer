@@ -1,0 +1,41 @@
+defmodule Customer do
+   def begin() do
+      customer = spawn(__MODULE__, :loop, :random.uniform(10000), :random.uniform(25))
+   end
+   def start(customer) do
+     send(customer, {:wait})
+   end
+   def loop(wait, fib) do
+    :timer.sleep(wait)
+    receive do
+      {:sleep} ->
+         :timer.sleep(wait)
+         send(:manager, {:self(), :customer_ready})
+	 loop(wait, fib)
+      {:pair_with_server, server} -> 
+         send(server, {:calculate_fib, fib, self()}
+         loop(wait, fib)
+      {:print_fib, fib} -> 
+         IO.puts("Fibonacci: #{fib}")
+    end
+end
+end
+
+defmodule Server do
+   def begin() do
+     server = spawn(__MODULE__, :loop)
+   end
+   def start(server) do
+     spawn(_MODULE_, :loop)
+     send(manager, {:server_ready, self()}
+   end
+   def loop() do
+     {:calculate_fib, fib, customer} ->
+        :timer.sleep(:random.uniform(1000))
+        send(customer, {:print_fib, fib * 2})
+	send(manager, {:free_server, self()})
+   end
+   loop
+end
+end
+     
