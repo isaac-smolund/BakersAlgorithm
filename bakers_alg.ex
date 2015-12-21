@@ -10,7 +10,8 @@ defmodule Customer do
     receive do
       {:sleep} ->
          :timer.sleep(wait)
-         send(:manager, {:customer_ready, self()})
+     	 managerPID = :global.whereis_name(:manager)
+     	 send(managerPID, {:customer_ready, self()})
 	 loop(wait, fib)
       {:pair_with_server, server} -> 
          IO.puts("Server #{inspect server} is now helping Customer #{inspect self} to calculate fib(#{fib})")
@@ -23,15 +24,18 @@ end
 end
 
 defmodule Server do
-   def begin() do
-     server = spawn(__MODULE__, :loop, [])
-     send(:manager, {:server_ready, server})
+   def begin(loc) do
+     IO.puts("Creating new server on #{loc}")
+     server = Node.spawn(loc, __MODULE__, :loop,[])
+     managerPID = :global.whereis_name(:manager)
+     send(managerPID, {:server_ready, server})
    end
-   def loop do
+   def loop() do
      receive do
        {:calculate_fib, fibnum, customer} ->
           send(customer, {:print_fib, Fib.fib(fibnum)})
-	  send(:manager, {:server_ready, self()})
+	  managerPID = :global.whereis_name(:manager)
+	  send(managerPID, {:server_ready, self()})
      end
      loop
    end
@@ -48,7 +52,7 @@ end
 defmodule Manager do
   def begin() do
     manager = spawn(__MODULE__, :manage, [[], []])
-    Process.register(manager, :manager)
+    :global.register_name(:manager, manager)
   end
   def manage([], []) do
     receive do
@@ -82,12 +86,12 @@ end
 
 
 defmodule BakersAlg do
- def main() do
-    Process.delete(:manager) 
+ def main(host_1, host_2, host_3) do
+    
     Manager.begin()
-    server = Server.begin()
-    server = Server.begin()
-    server = Server.begin()
+    server = Server.begin(host_1)
+    server = Server.begin(host_2)
+    server = Server.begin(host_3)
     Customer.start(Customer.begin());
     Customer.start(Customer.begin());
     Customer.start(Customer.begin());
